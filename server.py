@@ -43,7 +43,6 @@ auths = firebase_auth.auth()
 def index():
     return render_template('index.html') 
 
-
 @socketio.on('connect')
 def handle_connect():
     print('Client connected. id=', request.sid)
@@ -425,7 +424,6 @@ def join_debate_room(data):
     socket_to_user[sid] = user_id
     join_room(room_id)
     
-
 
 @socketio.on('leave_click')
 def leave_debate_room(data):
