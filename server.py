@@ -12,9 +12,9 @@ from flask_socketio import SocketIO, join_room, leave_room, emit, close_room
 from default_rooms import get_mock_rooms
 from models import Room, User
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "./server/debate-center-firebase-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/etc/secrets/debate-center-firebase-key.json"
 app = Flask(__name__)
-cors = CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
+cors = CORS(app, resources={r"/api/*": {"origins": "https://debate-center-dd720.web.app/"}})
 socketio = SocketIO(app, cors_allowed_origins='*')
 
 config = {
