@@ -779,11 +779,11 @@ def handle_disconnect():
 
 @socketio.on('sendMessage')
 def handle_send_message(payload):
-#     print(f"received message from sid: {request.sid}: {payload}")
-#     message = payload['message']
-#     room_id = payload['roomId']
-#     user_id = payload.get('userId') # f"{request.remote_addr}"  # change to user_id when ready
-#     socketio.emit('receiveMessage', {'message': message, 'userId': user_id}, to=room_id)
+    print(f"received message from sid: {request.sid}: {payload}")
+    message = payload['message']
+    room_id = payload['roomId']
+    user_id = payload.get('userId') # f"{request.remote_addr}"  # change to user_id when ready
+    socketio.emit('receiveMessage', {'message': message, 'userId': user_id}, to=room_id)
 
 
 if __name__ == '__main__':
