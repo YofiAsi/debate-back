@@ -14,7 +14,7 @@ from models import Room, User
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "./server/debate-center-firebase-key.json"
 app = Flask(__name__)
-CORS(app)
+cors = CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
 socketio = SocketIO(app, cors_allowed_origins='*')
 
 config = {
