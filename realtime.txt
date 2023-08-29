@@ -1,0 +1,78 @@
+# Create a room in Realtime Database
+@app.route('/api/create_room_realtime', methods=['POST', 'OPTIONS'])
+def create_room_realtime():
+    if request.method == 'OPTIONS':
+        # Set CORS headers for the preflight request
+        response = jsonify({'roomId': ''})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'POST'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
+
+    # Get the request data
+    room_data = request.get_json()
+    name = room_data.get('name')
+    tags = room_data.get('tags')
+    teams = room_data.get('teams')
+    room_size = room_data.get('room_size')
+    time_to_start = room_data.get('time_to_start')
+    spectators = room_data.get('spectators')
+    moderator = room_data.get('moderator')
+
+    # Create the room data
+    new_room = {
+        'name': name,
+        'tags': tags,
+        'teams': teams,
+        'room_size': room_size,
+        'time_to_start': time_to_start,
+        'spectators': spectators,
+        'users_list': {moderator: True},
+        'spectators_list': [],
+        'moderator': moderator,
+        'is_conversation': False,
+    }
+
+    # Store the room data in Firebase Realtime Database
+    room_ref = ref_realtime.push(new_room)
+
+    # Return the room ID as a response
+    response = jsonify({'roomId': room_ref.key})
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
+
+
+@app.route('/api/fetch_room_data_realtime', methods=['POST', 'OPTIONS'])
+def fetch_room_data_realtime():
+    if request.method == 'OPTIONS':
+        # Set CORS headers for the preflight request
+        response = jsonify({})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'POST'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        return response
+
+    # Get the request data
+    room_data = request.get_json()
+    room_id = room_data.get('roomId')
+
+    # Fetch the room data from the Realtime Database
+    room_ref = db.reference(f'rooms/{room_id}', app=app_realtime)
+    room_data = room_ref.get()
+
+    if room_data:
+
+        users_list = room_data.get('users_list', {})
+        room_size = room_data.get('room_size', 0)
+
+        if len(users_list) >= room_size:
+            # Room is full, send a specific response
+            response = jsonify({'error': 'Room is full'})
+        else:
+            response = jsonify(room_data)
+    else:
+        # Room not found, send a specific response
+        response = jsonify({'error': 'Room not found'})
+
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
