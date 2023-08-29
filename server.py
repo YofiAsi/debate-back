@@ -356,13 +356,13 @@ def join_debate_room(data):
 
     if room_id not in rooms:
         # Room not found, send a specific response
-        emit('room not found', {'error': 'Room not found'})
+        socketio.emit('room not found', {'error': 'Room not found'}, room=sid)
         return
 
     room = rooms[room_id]
 
     if user_id in room.blacklist:
-        emit('kick from room', room=sid)
+        socketio.emit('kick from room', room=sid)
         return
 
     # if no moderator, set the user to be the moderator
@@ -382,9 +382,9 @@ def join_debate_room(data):
             room.users_list[user_id].sid = sid 
         else:
             room.spectators_list[user_id].sid = sid
-        emit('user_join', dataclasses.asdict(room), room=sid)
-        emit('room_data_updated', dataclasses.asdict(room), to=room_id)
-        emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+        socketio.emit('user_join', dataclasses.asdict(room), room=sid)
+        socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
+        socketio.emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
         join_room(room_id)
         return
     
@@ -395,26 +395,26 @@ def join_debate_room(data):
             return
         
         room.spectators_list[user_id] = User(sid=sid, photo_url=photo_url)
-        emit('spectator_join', dataclasses.asdict(room), room=sid)
+        socketio.emit('spectator_join', dataclasses.asdict(room), room=sid)
 
     elif len(room.users_list) >= room.room_size:
         if not room.allow_spectators:
             # Room is full, send a specific response
-            emit('room is full', room=sid)
+            socketio.emit('room is full', room=sid)
             return
         # TODO: add user to spectators list
         room.spectators_list.append(user_id)
-        emit('user_join', dataclasses.asdict(room) ,room=sid)
+        socketio.emit('user_join', dataclasses.asdict(room) ,room=sid)
 
     else:  # room is not full, add user to room
         room.users_list.update({user_id: User(sid=sid, photo_url=photo_url)})
         if user_id not in room.user_reports.keys():
             room.user_reports[user_id] = []
-        emit('user_join', dataclasses.asdict(room), room=sid)
+        socketio.emit('user_join', dataclasses.asdict(room), room=sid)
         
     # Notify all users in the room about the change
-    emit('room_data_updated', dataclasses.asdict(room), to=room_id)
-    emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+    socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
+    socketio.emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
     
     # Join the SocketIO broadcast room
     socket_to_room[sid] = room_id
@@ -441,7 +441,7 @@ def leave_debate_room(data):
 
     if room_id not in rooms:
         # Room not found, send a specific response
-        emit('leave_room_error', {'error': 'Room not found'})
+        socketio.emit('leave_room_error', {'error': 'Room not found'}, room=sid)
         return
 
     room = rooms[room_id]
@@ -451,7 +451,7 @@ def leave_debate_room(data):
     elif user_id in room.spectators_list:
         room.spectators_list.pop(user_id)
     else:
-        emit('leave_room_error', {'error': 'User is not in the room'})
+        emit('leave_room_error', {'error': 'User is not in the room'}, room=sid)
         leave_room(room_id)
         return
     
@@ -467,16 +467,16 @@ def leave_debate_room(data):
     for check_user in room.users_list.keys():
         if  len(room.user_reports[check_user]) >= int(len(room.users_list) / 2) + 1 :
             room.blacklist.append(check_user)
-            emit('check_report_user_list',{'reportedUserId':check_user,
+            socketio.emit('check_report_user_list',{'reportedUserId':check_user,
                             'roomData': dataclasses.asdict(room)} ,to=room_id)
                             
     if not room.users_list and room.is_conversation:
         # Delete the conversation if no users are left, send a message to the spectators
         leave_room(room_id)
-        emit('allUsersLeft', to=room_id)
+        socketio.emit('allUsersLeft', to=room_id)
         rooms.pop(room_id)
         close_room(room_id)
-        emit('rooms_deleted', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+        socketio.emit('rooms_deleted', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
         return
 
     # If the moderator left, assign a new moderator
@@ -491,23 +491,24 @@ def leave_debate_room(data):
     # leave the SocketIO broadcast room
     leave_room(room_id)
     # Notify all users in the room about the change
-    emit('room_data_updated', dataclasses.asdict(room), to=room_id)
-    emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
-    emit('userLeft', { "sid": sid, "userId": user_id }, to=room_id)  # for conversations only
+    socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
+    socketio.emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+    socketio.emit('userLeft', { "sid": sid, "userId": user_id }, to=room_id)  # for conversations only
 
 
 @socketio.on('fetch_room_data')
 def fetch_room_data(data):
     # Get the request data
+    sid = request.sid
     room_id = data.get('roomId')
 
     if room_id not in rooms:
         # Room not found, send a specific response
-        emit('fetch_room_data_error', {'error': 'Room not found'})
+        socketio.emit('fetch_room_data_error', {'error': 'Room not found'}, room=sid)
         return
 
     room = rooms[room_id]
-    emit('room_data', dataclasses.asdict(room), room=request.sid)
+    socketio.emit('room_data', dataclasses.asdict(room), room=sid)
 
 # -------------------------------------- #
 
@@ -529,7 +530,7 @@ def switch_team(data):
     user.team = not user.team
 
     # Notify all users in the room about the change
-    emit('room_data_updated', dataclasses.asdict(room), to=room_id)
+    socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
 
 @socketio.on('spectator_click')
 def handle_spectator_click(data):
@@ -545,7 +546,7 @@ def handle_spectator_click(data):
         return
     user = room.users_list.pop(user_id)
     room.spectators_list[user_id] = user
-    emit('room_data_updated', dataclasses.asdict(room), to=room_id)
+    socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
 
 @socketio.on('debater_click')
 def handle_debater_click(data):
@@ -561,7 +562,7 @@ def handle_debater_click(data):
         return
     user = room.spectators_list.pop(user_id)
     room.users_list[user_id] = user
-    emit('room_data_updated', dataclasses.asdict(room), to=room_id)
+    socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
 
 @socketio.on('ready_click')
 def handle_ready_click(data):
@@ -581,7 +582,7 @@ def handle_ready_click(data):
     user.ready = not user.ready
 
     # Notify all users in the room about the change
-    emit('room_data_updated', dataclasses.asdict(room), to=room_id)
+    socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
 
 @socketio.on('report_user')
 def report_user(data):
@@ -607,12 +608,12 @@ def report_user(data):
     # update blacklist
     if  len(room.user_reports[reported_user_id]) >= int(len(room.users_list) / 2) + 1 :
         room.blacklist.append(reported_user_id)
-        emit('check_report_user_list',{'reportedUserId':reported_user_id,
+        socketio.emit('check_report_user_list',{'reportedUserId':reported_user_id,
                         'roomData': dataclasses.asdict(room)} ,to=room_id)
 
 
     # Notify all users in the room about the change
-    emit('room_data_updated', dataclasses.asdict(room), to=room_id)
+    socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
 
 
 @socketio.on('kick_user')
@@ -629,7 +630,7 @@ def kick_user(data):
 
     if room_id not in rooms:
         # Room not found, send a specific response
-        emit('leave_room_error', {'error': 'Room not found'})
+        socketio.emit('leave_room_error', {'error': 'Room not found'}, room=sid)
         return
 
     room = rooms[room_id]
@@ -645,7 +646,7 @@ def kick_user(data):
     elif user_id in room.spectators_list:
         room.spectators_list.pop(user_id)
     else: 
-        emit('leave_room_error', {'error': 'User is not in the room'})
+        socketio.emit('leave_room_error', {'error': 'User is not in the room'}, room=sid)
         leave_room(room_id)
         return
     
@@ -655,16 +656,16 @@ def kick_user(data):
     for check_user in room.users_list.keys():
         if  len(room.user_reports[check_user]) >= int(len(room.users_list.keys()) / 2) + 1 :
             room.blacklist.append(check_user)
-            emit('check_report_user_list',{'reportedUserId':check_user,
+            socketio.emit('check_report_user_list',{'reportedUserId':check_user,
                             'roomData': dataclasses.asdict(room)} ,to=room_id)
 
     if not room.users_list and room.is_conversation:
         # Delete the conversation if no users are left, send a message to the spectators
         leave_room(room_id)
-        emit('allUsersLeft', to=room_id)
+        socketio.emit('allUsersLeft', to=room_id)
         rooms.pop(room_id)
         close_room(room_id)
-        emit('rooms_deleted', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+        socketio.emit('rooms_deleted', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
         return
 
     # If the moderator left, assign a new moderator
@@ -679,9 +680,9 @@ def kick_user(data):
     # leave the SocketIO broadcast room
     leave_room(room_id)
     # Notify all users in the room about the change
-    emit('room_data_updated', dataclasses.asdict(room), to=room_id)
-    emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
-    emit('userLeft', { "sid": sid, "userId": user_id }, to=room_id)  # for conversations only
+    socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
+    socketio.emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+    socketio.emit('userLeft', { "sid": sid, "userId": user_id }, to=room_id)  # for conversations only
 
 # -------------------------------------- #
 
@@ -697,25 +698,26 @@ def handle_conversation_start(data):
     rooms[room_id].is_conversation = True
     
     # Notify all users in the room about the change
-    emit('conversation_start', to=room_id)
+    socketio.emit('conversation_start', to=room_id)
 
 
 @socketio.on('WebcamReady')  # TODO: add a thread that checks the timer for each room and starts conversation when it reaches 0
 def handle_webcam_ready(payload):
-    print("WebcamReady from:", request.sid, payload)
+    sid = request.sid
+    print("WebcamReady from:", sid, payload)
     room_id = payload.get('roomId')
     user_id = payload.get('userId')
     room = rooms[room_id]
     user = room.users_list[user_id]
-    if user.sid != request.sid:
+    if user.sid != sid:
         print("WebcamReady: user.sid is not equal to request.sid, quiting", user.sid, request.sid)
         return
 
     user.camera_ready = True
     # Notify all users in the room about the change
-    emit('userInConversationReady', { "userId": user_id, "userSid": user.sid }, to=room_id, include_self=False)
+    socketio.emit('userInConversationReady', { "userId": user_id, "userSid": user.sid }, to=room_id, include_self=False)
     # Notify user about other user in the room - not needed
-    emit('usersInConversation', dataclasses.asdict(room))
+    socketio.emit('usersInConversation', dataclasses.asdict(room), room=sid)
 
 # -------------- SIGNALING ------------- #
     
@@ -726,7 +728,7 @@ def handle_sending_signal(payload):
     # caller_id should be request.sid
     print(f"got sendingSignal from user: {user_id}, sid: {request.sid}, caller_id: {payload['callerId']}, is_spectator: {payload['isSpectator']}, to: {user_sid_to_send_signal}")
     print(f"sending sendingSignalAck to sid: {user_sid_to_send_signal}")
-    emit('sendingSignalAck', {'signal': payload['signal'], 'callerId': payload['callerId'], 'userId': user_id, 'isSpectator': payload['isSpectator']}, to=user_sid_to_send_signal)
+    socketio.emit('sendingSignalAck', {'signal': payload['signal'], 'callerId': payload['callerId'], 'userId': user_id, 'isSpectator': payload['isSpectator']}, to=user_sid_to_send_signal)
 
 @socketio.on('returningSignal')
 def handle_returning_signal(payload):
@@ -734,7 +736,7 @@ def handle_returning_signal(payload):
     user_id = payload['userId']
     print(f"got returningSignal from user: {user_id}, sid: {request.sid}, caller_id: {caller_id}")
     print(f"sending returningSignalAck to sid: {caller_id}")
-    emit('returningSignalAck', {'signal': payload['signal'], 'calleeId': request.sid, 'userId': user_id}, to=caller_id)
+    socketio.emit('returningSignalAck', {'signal': payload['signal'], 'calleeId': request.sid, 'userId': user_id}, to=caller_id)
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -765,13 +767,13 @@ def handle_disconnect():
         # Delete the room if no users are left
         rooms.pop(room_id)
         close_room(room_id)
-        emit('rooms_deleted', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+        socketio.emit('rooms_deleted', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
         return
 
     # update room data and notify users
-    emit('room_data_updated', dataclasses.asdict(room), to=room_id)
-    emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
-    emit('userLeft', { "sid": sid, "userId": user_id }, to=room_id)  # for conversations only
+    socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
+    socketio.emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+    socketio.emit('userLeft', { "sid": sid, "userId": user_id }, to=room_id)  # for conversations only
 
 
 # ---------- CHAT ---------- #        
@@ -782,7 +784,7 @@ def handle_send_message(payload):
     message = payload['message']
     room_id = payload['roomId']
     user_id = payload.get('userId') # f"{request.remote_addr}"  # change to user_id when ready
-    emit('receiveMessage', {'message': message, 'userId': user_id}, to=room_id)
+    socketio.emit('receiveMessage', {'message': message, 'userId': user_id}, to=room_id)
 
 
 if __name__ == '__main__':
