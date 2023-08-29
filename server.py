@@ -14,8 +14,8 @@ from models import Room, User
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/etc/secrets/debate-center-firebase-key.json"
 app = Flask(__name__)
-origins = ["https://facebook.com/*", "https://*.facebook.com", "https://*.google.com", "https://debate-center-dd720.web.app/", "https://debate-center-dd720.firebaseapp.com/"]
-cors = CORS(app, origins=origins)
+origins = ["https://facebook.com/*", "https://*.facebook.com", "https://*.google.com", "https://debate-center-dd720.web.app", "https://debate-center-dd720.firebaseapp.com"]
+CORS(app, resources={r"/*": {"origins": origins}})
 socketio = SocketIO(app, cors_allowed_origins=origins)
 
 config = {
@@ -68,6 +68,8 @@ def signup():
     name = user_data.get('name')
     username = user_data.get('username')
     tags = user_data.get('tags')
+
+    print(f"!!! signup requsted: \nemail: {email}\npassword: {password}\nname: {name}\nusername: {username}\ntags: {tags}")
 
     try:
         if is_username_exists(username):
@@ -170,6 +172,7 @@ def signin():
     user_data = request.get_json()
     email = user_data.get('email')
     password = user_data.get('password')
+    print(f"!!! signin requsted: \nemail: {email}\npassword: {password}")
     try:
         login_user = auths.sign_in_with_email_and_password(email, password)
         token = login_user['idToken']
@@ -304,7 +307,8 @@ rooms = get_mock_rooms()
 @socketio.on("fetch_all_rooms")
 def get_all_rooms():
     sid = request.sid
-    print(f"fetch_all_rooms sid: {sid}")
+
+    print(f"!!! fetch_all_rooms sid: {sid}")
     rooms_to_send = {room_id: dataclasses.asdict(room_data) for room_id, room_data in rooms.items()}
     socketio.emit("all_rooms", rooms_to_send, room=sid)
 
@@ -334,6 +338,8 @@ def create_room():
     )
     rooms[room_id] = room
     socketio.emit('rooms_new', dataclasses.asdict(room))
+
+    print(f"!!! create_room room_id: {room_id}, room_data: {room_data}")
 
     # Return the room ID as a response
     return jsonify({'roomId': room_id})
