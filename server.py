@@ -18,17 +18,17 @@ CORS(app)
 socketio = SocketIO(app, cors_allowed_origins='*')
 
 config = {
-  'apiKey': "AIzaSyDgh6sFpRq3YmEJDW4Z-L4ReInFSkA6NSY",
-  'authDomain': "debate-center-dd720.firebaseapp.com",
-  'databaseURL': "https://debate-center-dd720-default-rtdb.europe-west1.firebasedatabase.app",
-  'projectId': "debate-center-dd720",
-  'storageBucket': "debate-center-dd720.appspot.com",
-  'messagingSenderId': "524928099280",
-  'appId': "1:524928099280:web:9b24e083399f9bfae0cfd5"
+    'apiKey': os.environ.get('FIREBASE_API_KEY'),
+    'authDomain': os.environ.get('FIREBASE_AUTH_DOMAIN'),
+    'databaseURL': os.environ.get('FIREBASE_DATABASE_URL'),
+    'projectId': os.environ.get('FIREBASE_PROJECT_ID'),
+    'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET'),
+    'messagingSenderId': os.environ.get('FIREBASE_MESSAGING_SENDER_ID'),
+    'appId': os.environ.get('FIREBASE_APP_ID')
 }
 
 # Initialize Firebase Admin SDK for Firestore
-cred_firestore = credentials.Certificate("./debate-center-firebase-key.json")
+cred_firestore = credentials.Certificate("/etc/secrets/debate-center-firebase-key.json")
 app_firestore = firebase_admin.initialize_app(cred_firestore, name='Firestore', options={
     'storageBucket': config['storageBucket']
 })
