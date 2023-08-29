@@ -384,7 +384,7 @@ def join_debate_room(data):
             room.spectators_list[user_id].sid = sid
         socketio.emit('user_join', dataclasses.asdict(room), room=sid)
         socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
-        socketio.emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+        socketio.emit('rooms_updated', dataclasses.asdict(room), skip_sid=room_id)
         join_room(room_id)
         return
     
@@ -414,7 +414,7 @@ def join_debate_room(data):
         
     # Notify all users in the room about the change
     socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
-    socketio.emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+    socketio.emit('rooms_updated', dataclasses.asdict(room), skip_sid=room_id)
     
     # Join the SocketIO broadcast room
     socket_to_room[sid] = room_id
@@ -476,7 +476,7 @@ def leave_debate_room(data):
         socketio.emit('allUsersLeft', to=room_id)
         rooms.pop(room_id)
         close_room(room_id)
-        socketio.emit('rooms_deleted', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+        socketio.emit('rooms_deleted', dataclasses.asdict(room), skip_sid=room_id)
         return
 
     # If the moderator left, assign a new moderator
@@ -492,7 +492,7 @@ def leave_debate_room(data):
     leave_room(room_id)
     # Notify all users in the room about the change
     socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
-    socketio.emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+    socketio.emit('rooms_updated', dataclasses.asdict(room), skip_sid=room_id)
     socketio.emit('userLeft', { "sid": sid, "userId": user_id }, to=room_id)  # for conversations only
 
 
@@ -665,7 +665,7 @@ def kick_user(data):
         socketio.emit('allUsersLeft', to=room_id)
         rooms.pop(room_id)
         close_room(room_id)
-        socketio.emit('rooms_deleted', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+        socketio.emit('rooms_deleted', dataclasses.asdict(room), skip_sid=room_id)
         return
 
     # If the moderator left, assign a new moderator
@@ -681,7 +681,7 @@ def kick_user(data):
     leave_room(room_id)
     # Notify all users in the room about the change
     socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
-    socketio.emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+    socketio.emit('rooms_updated', dataclasses.asdict(room), skip_sid=room_id)
     socketio.emit('userLeft', { "sid": sid, "userId": user_id }, to=room_id)  # for conversations only
 
 # -------------------------------------- #
@@ -767,12 +767,12 @@ def handle_disconnect():
         # Delete the room if no users are left
         rooms.pop(room_id)
         close_room(room_id)
-        socketio.emit('rooms_deleted', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+        socketio.emit('rooms_deleted', dataclasses.asdict(room), skip_sid=room_id)
         return
 
     # update room data and notify users
     socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
-    socketio.emit('rooms_updated', dataclasses.asdict(room), broadcast=True, skip_sid=room_id)
+    socketio.emit('rooms_updated', dataclasses.asdict(room), skip_sid=room_id)
     socketio.emit('userLeft', { "sid": sid, "userId": user_id }, to=room_id)  # for conversations only
 
 
