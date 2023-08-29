@@ -28,7 +28,7 @@ config = {
 }
 
 # Initialize Firebase Admin SDK for Firestore
-cred_firestore = credentials.Certificate("./server/debate-center-firebase-key.json")
+cred_firestore = credentials.Certificate("./debate-center-firebase-key.json")
 app_firestore = firebase_admin.initialize_app(cred_firestore, name='Firestore', options={
     'storageBucket': config['storageBucket']
 })
@@ -41,7 +41,7 @@ auths = firebase_auth.auth()
 
 @app.route('/', methods=['GET'])
 def index():
-    return render_template('index.html') 
+    return "hello this is me mario"
 
 @socketio.on('connect')
 def handle_connect():
