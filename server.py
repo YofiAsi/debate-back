@@ -1,4 +1,5 @@
 import dataclasses
+import math
 import os
 import time
 import uuid
@@ -393,6 +394,10 @@ def join_debate_room(data):
         join_room(room_id)
         return
     
+    if user_id in any(another_room.users_list for another_room in rooms.values() if another_room.id != room_id):
+        print("user tried to join room when he is already in another room")
+        socketio.emit('user already in another room', room=sid)
+        return
     
     if room.is_conversation:
         if not room.allow_spectators:
@@ -412,7 +417,8 @@ def join_debate_room(data):
         socketio.emit('user_join', dataclasses.asdict(room) ,room=sid)
 
     else:  # room is not full, add user to room
-        room.users_list.update({user_id: User(sid=sid, photo_url=photo_url)})
+        team = room.teams and len(other_user for other_user in room.users_list.values() if other_user.team) < room.room_size / 2
+        room.users_list.update({user_id: User(sid=sid, team=team, photo_url=photo_url)})
         if user_id not in room.user_reports.keys():
             room.user_reports[user_id] = []
         socketio.emit('user_join', dataclasses.asdict(room), room=sid)
@@ -567,6 +573,9 @@ def handle_debater_click(data):
         return
     user = room.spectators_list.pop(user_id)
     room.users_list[user_id] = user
+    # if teams are enabled, check if teams would become unbalanced
+    if room.teams and len(other_user for other_user in room.users_list.values() if other_user.team == user.team) > math.ceil(room.room_size / 2):
+        user.team = not user.team
     socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
 
 @socketio.on('ready_click')
