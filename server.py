@@ -1,3 +1,5 @@
+from gevent import monkey
+monkey.patch_all()
 import dataclasses
 import os
 import time
