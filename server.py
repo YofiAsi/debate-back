@@ -394,7 +394,7 @@ def join_debate_room(data):
         join_room(room_id)
         return
     
-    if user_id in any(another_room.users_list for another_room in rooms.values() if another_room.id != room_id):
+    elif any(user_id in another_room.users_list for another_room in rooms.values()):
         print("user tried to join room when he is already in another room")
         socketio.emit('user already in another room', room=sid)
         return
