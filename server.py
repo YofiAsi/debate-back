@@ -419,7 +419,7 @@ def join_debate_room(data):
         socketio.emit('user_join', dataclasses.asdict(room) ,room=sid)
 
     else:  # room is not full, add user to room
-        team = room.teams and len(other_user for other_user in room.users_list.values() if other_user.team) < len(room.users_list) / 2
+        team = room.teams and len([other_user for other_user in room.users_list.values() if other_user.team]) < len(room.users_list) / 2
         room.users_list.update({user_id: User(sid=sid, team=team, photo_url=photo_url)})
         if user_id not in room.user_reports.keys():
             room.user_reports[user_id] = []
