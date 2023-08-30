@@ -4,3 +4,4 @@ key.pem
 venv/
 __pycache__/
 ```
+server-copy.py
