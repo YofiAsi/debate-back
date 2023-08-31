@@ -1,9 +1,12 @@
 import dataclasses
+import math
 import os
 import time
 import uuid
 import firebase_admin
 import pyrebase
+# import eventlet
+# eventlet.monkey_patch()
 from firebase_admin import credentials, auth
 from firebase_admin import firestore, storage
 from flask import Flask, jsonify, request, render_template
@@ -12,7 +15,7 @@ from flask_socketio import SocketIO, join_room, leave_room, emit, close_room
 from default_rooms import get_mock_rooms
 from models import Room, User
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/etc/secrets/debate-center-firebase-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "etc/secrets/debate-center-firebase-key.json"
 app = Flask(__name__)
 origins = ["https://facebook.com/*", "https://*.facebook.com", "https://*.google.com", "https://debate-center-dd720.web.app", "https://debate-center-dd720.firebaseapp.com"]
 CORS(app, resources={r"/*": {"origins": origins}})
@@ -29,7 +32,7 @@ config = {
 }
 
 # Initialize Firebase Admin SDK for Firestore
-cred_firestore = credentials.Certificate("/etc/secrets/debate-center-firebase-key.json")
+cred_firestore = credentials.Certificate("etc/secrets/debate-center-firebase-key.json")
 app_firestore = firebase_admin.initialize_app(cred_firestore, name='Firestore', options={
     'storageBucket': config['storageBucket']
 })
@@ -219,7 +222,7 @@ def check_user_data():
         user_doc = user_ref.get().to_dict()
         return jsonify(user_doc)
     except Exception as e:
-        return None
+        return
 
 # ---------- UPDATE_USER ---------- #
 @app.route('/api/update_user', methods=['POST'])
@@ -393,6 +396,10 @@ def join_debate_room(data):
         join_room(room_id)
         return
     
+    elif any(user_id in another_room.users_list for another_room in rooms.values()):
+        print("user tried to join room when he is already in another room")
+        socketio.emit('user already in another room', room=sid)
+        return
     
     if room.is_conversation:
         if not room.allow_spectators:
@@ -412,7 +419,8 @@ def join_debate_room(data):
         socketio.emit('user_join', dataclasses.asdict(room) ,room=sid)
 
     else:  # room is not full, add user to room
-        room.users_list.update({user_id: User(sid=sid, photo_url=photo_url)})
+        team = room.teams and len([other_user for other_user in room.users_list.values() if other_user.team]) < len(room.users_list) / 2
+        room.users_list.update({user_id: User(sid=sid, team=team, photo_url=photo_url)})
         if user_id not in room.user_reports.keys():
             room.user_reports[user_id] = []
         socketio.emit('user_join', dataclasses.asdict(room), room=sid)
@@ -482,6 +490,7 @@ def leave_debate_room(data):
         rooms.pop(room_id)
         close_room(room_id)
         socketio.emit('rooms_deleted', dataclasses.asdict(room), skip_sid=room_id)
+        bot_room_manager.remove_room(room_id)
         return
 
     # If the moderator left, assign a new moderator
@@ -567,6 +576,9 @@ def handle_debater_click(data):
         return
     user = room.spectators_list.pop(user_id)
     room.users_list[user_id] = user
+    # if teams are enabled, check if teams would become unbalanced
+    if room.teams and len([other_user for other_user in room.users_list.values() if other_user.team == user.team]) > math.ceil(room.room_size / 2):
+        user.team = not user.team
     socketio.emit('room_data_updated', dataclasses.asdict(room), to=room_id)
 
 @socketio.on('ready_click')
@@ -705,6 +717,10 @@ def handle_conversation_start(data):
     # Notify all users in the room about the change
     socketio.emit('conversation_start', to=room_id)
 
+    # Bot room manager
+    if rooms[room_id].teams is True:
+        bot_room_manager.add_room(room_id)
+
 
 @socketio.on('WebcamReady')  # TODO: add a thread that checks the timer for each room and starts conversation when it reaches 0
 def handle_webcam_ready(payload):
@@ -784,14 +800,147 @@ def handle_disconnect():
 # ---------- CHAT ---------- #        
 
 @socketio.on('sendMessage')
-def handle_send_message(payload):
-    print(f"received message from sid: {request.sid}: {payload}")
+def handle_send_message(payload, bot=False):
+    print(f"received message {payload}")
     message = payload['message']
     room_id = payload['roomId']
     user_id = payload.get('userId') # f"{request.remote_addr}"  # change to user_id when ready
-    socketio.emit('receiveMessage', {'message': message, 'userId': user_id}, to=room_id)
+    socketio.emit('receiveMessage', {'message': message, 'userId': user_id, 'bot': bot}, to=room_id)
 
+
+class BotRoom:
+    def __init__(self, room_id: int):
+        self.room_id = room_id
+        self.ready_time = 3 * 60  # Time in 3 minutes
+        self.team_time = [60 * 5 , 60 * 5]  # Team 1 and Team 2 durations in seconds
+        self.max_duration = 60 * 60  # Maximum duration of the room in seconds (1 hour)
+        self.current_team = 1
+        self.announce_time = 60
+        self.start_time = time.time()
+        self.last_action_time = time.time()
+        self.state = 'waiting'  # Possible states: waiting, team_1, team_2, closing, closed
+
+    def init_msg(self):
+        handle_send_message(
+            {'roomId': self.room_id,
+            'message': 'Welcome! Debate will start in 3 minuets!',
+            'userId': 'bot'},
+            bot=True
+        )
+
+    def switch_bot_team(self) -> None:
+        self.current_team = 3 - self.current_team
+        self.last_action_time = time.time()
+        self.announce_time = 60
+        self.state = f'team_{self.current_team}'
+        print(f"Room {self.room_id}: Now team {self.current_team}")
+
+        # take the room's team names
+        room = rooms.get(self.room_id, None)
+        if room is None:
+            return
+        team_name = room.team_names[self.current_team - 1] # team_names is a list of 2 strings
+
+        handle_send_message(
+            {'message': f"Time's up! {team_name} team, your turn!",
+            'userId': 'bot',
+            'roomId': self.room_id},
+            bot=True
+        )
+
+    def start_debate_msg(self) -> None:
+        # take the room's team names
+        room = rooms.get(self.room_id, None)
+        if room is None:
+            return
+        team_name = room.team_names[self.current_team - 1] # team_names is a list of 2 strings
+
+        handle_send_message(
+            {'roomId': self.room_id,
+            'message': f'Debate started! {team_name} team, your turn! You have 5 minutes!',
+            'userId': 'bot'},
+            bot=True
+        )
+
+    def close_room(self) -> None:
+        print(f"Room {self.room_id}: bye")
+        self.state = 'closed'
+
+    def soon_close_msg(self) -> None:
+        handle_send_message(
+            {'roomId': self.room_id,
+            'message': 'Debate will end in 10 minutes!',
+            'userId': 'bot'},
+            bot=True
+        )
+
+    def manage(self, current_time: float) -> None:
+        elapsed_time = current_time - self.last_action_time
+        total_elapsed_time = current_time - self.start_time
+        # print(f"Room {self.room_id}: elapsed_time: {elapsed_time}, total_elapsed_time: {total_elapsed_time}, state: {self.state}")
+        if self.state == 'waiting':
+            if elapsed_time >= self.ready_time:
+                self.state = f'team_{self.current_team}'
+                self.last_action_time = current_time
+                self.start_debate_msg()
+                print(f"Room {self.room_id}: Now team {self.current_team}")
+        elif self.state.startswith('team_'):
+            team_duration = self.team_time[self.current_team - 1]
+            if elapsed_time >= team_duration:
+                self.switch_bot_team()
+            elif elapsed_time >= self.announce_time:
+                self.announce_time += 60
+                room = rooms.get(self.room_id, None)
+                if room is None:
+                    return
+                team_name = room.team_names[self.current_team - 1]
+                handle_send_message(
+                    {'roomId': self.room_id,
+                    'message': f'{team_name} team, you have {round((team_duration - elapsed_time)/60)} minuets left!',
+                    'userId': 'bot'},
+                    bot=True
+                )
+            if self.max_duration - total_elapsed_time <= 5:
+                self.soon_close_msg()
+                self.state = 'closing'
+                print(f"Room {self.room_id}: soon will be closed")
+        elif total_elapsed_time >= self.max_duration:
+            self.close_room()
+
+class BotRoomManager:
+    def __init__(self):
+        self.rooms = {}
+        self.to_remove = []
+
+    def add_room(self, room_id) -> None:
+        if room_id in self.rooms:
+            print(f"Room {room_id} already exists.")
+            return
+        room = BotRoom(room_id)
+        self.rooms[room_id] = room
+        print(f"Room {room_id} added.")
+        room.init_msg()
+
+    def remove_room(self, id) -> None:
+        if id not in self.rooms:
+            # print(f"Room {id} does not exist.")
+            return
+        self.rooms.pop(id)
+        print(f"Room {id} removed.")
+
+    def run(self) -> None:
+        while True:
+            current_time = time.time()
+            rooms_copy = self.rooms.copy()
+            for id, room in rooms_copy.items():
+                if room.state == 'closed':
+                    self.remove_room(id)
+                else:
+                    room.manage(current_time)
+            # eventlet.sleep(10)
+
+bot_room_manager = BotRoomManager()
+# eventlet.spawn(bot_room_manager.run)
 
 if __name__ == '__main__':
-    # socketio.run(app, host='0.0.0.0', port=8000, debug=True, keyfile='./server/key.pem', certfile='./server/cert.pem')
     socketio.run(app, host='0.0.0.0', port=8000, debug=True)
