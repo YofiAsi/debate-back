@@ -222,7 +222,7 @@ def check_user_data():
         user_doc = user_ref.get().to_dict()
         return jsonify(user_doc)
     except Exception as e:
-        return None
+        return jsonify({'error': str(e)}), 500
 
 # ---------- UPDATE_USER ---------- #
 @app.route('/api/update_user', methods=['POST'])
