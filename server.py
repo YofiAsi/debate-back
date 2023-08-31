@@ -1,3 +1,6 @@
+import eventlet
+eventlet.sleep()
+eventlet.monkey_patch()
 
 import dataclasses
 import math
@@ -6,8 +9,6 @@ import time
 import uuid
 import firebase_admin
 import pyrebase
-import eventlet
-eventlet.monkey_patch(thread=False)
 from firebase_admin import credentials, auth
 from firebase_admin import firestore, storage
 from flask import Flask, jsonify, request
