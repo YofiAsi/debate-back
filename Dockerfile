@@ -11,5 +11,5 @@ ADD . /app
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 # Run server.py when the container launches
-CMD ["python", "server.py"]
+CMD ["python3", "server.py"]
 
