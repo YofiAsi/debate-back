@@ -6,8 +6,8 @@ import time
 import uuid
 import firebase_admin
 import pyrebase
-import eventlet
-eventlet.monkey_patch()
+# import eventlet
+# eventlet.monkey_patch()
 from firebase_admin import credentials, auth
 from firebase_admin import firestore, storage
 from flask import Flask, jsonify, request
@@ -490,7 +490,7 @@ def leave_debate_room(data):
         rooms.pop(room_id)
         close_room(room_id)
         socketio.emit('rooms_deleted', dataclasses.asdict(room), skip_sid=room_id)
-        bot_room_manager.remove_room(room_id)
+        # bot_room_manager.remove_room(room_id)
         return
 
     # If the moderator left, assign a new moderator
@@ -719,7 +719,7 @@ def handle_conversation_start(data):
 
     # Bot room manager
     if rooms[room_id].teams is True:
-        bot_room_manager.add_room(room_id)
+        # bot_room_manager.add_room(room_id)
 
 
 @socketio.on('WebcamReady')  # TODO: add a thread that checks the timer for each room and starts conversation when it reaches 0
