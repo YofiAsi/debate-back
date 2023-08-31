@@ -47,7 +47,7 @@ pyparsing==3.1.1
 Pyrebase4==4.7.1
 python-engineio==4.6.1
 python-jwt==4.0.0
-python-socketio==5.8.0
+python-socketio==3.1.2 
 requests==2.29.0
 requests-toolbelt==0.10.1
 rsa==4.9
