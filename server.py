@@ -15,7 +15,7 @@ from flask_socketio import SocketIO, join_room, leave_room, emit, close_room
 from default_rooms import get_mock_rooms
 from models import Room, User
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "ect/secrets/debate-center-firebase-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/etc/secrets/key.json"
 app = Flask(__name__)
 origins = ["https://facebook.com/*", "https://*.facebook.com", "https://*.google.com", "https://debate-center-dd720.web.app", "https://debate-center-dd720.firebaseapp.com"]
 CORS(app, resources={r"/*": {"origins": origins}})
@@ -32,7 +32,7 @@ config = {
 }
 
 # Initialize Firebase Admin SDK for Firestore
-cred_firestore = credentials.Certificate("ect/secrets/debate-center-firebase-key.json")
+cred_firestore = credentials.Certificate("/etc/secrets/key.json")
 app_firestore = firebase_admin.initialize_app(cred_firestore, name='Firestore', options={
     'storageBucket': config['storageBucket']
 })
