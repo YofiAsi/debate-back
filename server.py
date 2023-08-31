@@ -271,6 +271,10 @@ def delete_user():
     user_data = request.get_json()
     try:
         token = user_data.get('token')
+        verify_token = auth.verify_id_token(token)
+    except Exception as e:
+        return jsonify({'expire': str(e)}), 500
+    try:
         user_info = auths.get_account_info(token)['users'][0]
         user_id = user_info['localId']
         auths.delete_user_account(token)
