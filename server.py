@@ -6,8 +6,8 @@ import time
 import uuid
 import firebase_admin
 import pyrebase
-# import eventlet
-# eventlet.monkey_patch()
+import eventlet
+eventlet.monkey_patch()
 from firebase_admin import credentials, auth
 from firebase_admin import firestore, storage
 from flask import Flask, jsonify, request
