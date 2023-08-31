@@ -7,7 +7,7 @@ import uuid
 import firebase_admin
 import pyrebase
 import eventlet
-# eventlet.monkey_patch()
+eventlet.monkey_patch(thread=False)
 from firebase_admin import credentials, auth
 from firebase_admin import firestore, storage
 from flask import Flask, jsonify, request
@@ -16,7 +16,7 @@ from flask_socketio import SocketIO, join_room, leave_room, emit, close_room
 from default_rooms import get_mock_rooms
 from models import Room, User
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/etc/secrets/debate-center-firebase-key.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "etc/secrets/debate-center-firebase-key.json"
 app = Flask(__name__)
 origins = ["https://debate-center-dd720.web.app", "https://debate-center-dd720.firebaseapp.com"]
 CORS(app, origins=origins)
@@ -33,7 +33,7 @@ config = {
 }
 
 # Initialize Firebase Admin SDK for Firestore
-cred_firestore = credentials.Certificate("/etc/secrets/debate-center-firebase-key.json")
+cred_firestore = credentials.Certificate("etc/secrets/debate-center-firebase-key.json")
 app_firestore = firebase_admin.initialize_app(cred_firestore, name='Firestore', options={
     'storageBucket': config['storageBucket']
 })
@@ -823,7 +823,7 @@ class BotRoom:
     def init_msg(self):
         handle_send_message(
             {'roomId': self.room_id,
-            'message': 'Welcome! Debate will start in 3 minuets!',
+            'message': 'Welcome! Debate will start in 3 minutes!',
             'userId': 'bot'},
             bot=True
         )
@@ -931,17 +931,17 @@ class BotRoomManager:
     def run(self) -> None:
         while True:
             current_time = time.time()
+            print("hello")
             rooms_copy = self.rooms.copy()
             for id, room in rooms_copy.items():
                 if room.state == 'closed':
                     self.remove_room(id)
                 else:
                     room.manage(current_time)
-            eventlet.sleep(10)
+            eventlet.sleep(1)
 
 bot_room_manager = BotRoomManager()
-# eventlet.spawn(bot_room_manager.run)
+eventlet.spawn(bot_room_manager.run)
 
 if __name__ == '__main__':
-    socketio.start_background_task(bot_room_manager.run)
     socketio.run(app, host='0.0.0.0', port=8000, debug=True)
