@@ -942,7 +942,6 @@ class BotRoomManager:
             # eventlet.sleep(10)
 
 bot_room_manager = BotRoomManager()
-# eventlet.spawn(bot_room_manager.run)
 
 if __name__ == '__main__':
     # eventlet.spawn(bot_room_manager.run)
