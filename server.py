@@ -720,7 +720,7 @@ def handle_conversation_start(data):
     socketio.emit('conversation_start', to=room_id)
 
     # Bot room manager
-    if rooms[room_id].teams is True:
+    # if rooms[room_id].teams is True:
         # bot_room_manager.add_room(room_id)
 
 
