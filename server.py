@@ -44,7 +44,7 @@ auths = firebase_auth.auth()
 
 @app.route('/', methods=['GET'])
 def index():
-    return "hello this is me maaario"
+    return "debate-center server is up and running!"
 
 @socketio.on('connect')
 def handle_connect():
@@ -273,11 +273,8 @@ def delete_user():
         token = user_data.get('token')
         user_info = auths.get_account_info(token)['users'][0]
         user_id = user_info['localId']
-        print("here1")
         auths.delete_user_account(token)
-        print("here2")
         user_ref = db_firestore.collection('users').document(user_id).delete()
-        print("here3")
 
         destination_blob_name = f'users/{user_data.get("username")}/profile _image'
         print(destination_blob_name)
@@ -929,14 +926,13 @@ class BotRoomManager:
     def run(self) -> None:
         while True:
             current_time = time.time()
-            print("hello")
             rooms_copy = self.rooms.copy()
             for id, room in rooms_copy.items():
                 if room.state == 'closed':
                     self.remove_room(id)
                 else:
                     room.manage(current_time)
-            eventlet.sleep(1)
+            eventlet.sleep(10)
 
 bot_room_manager = BotRoomManager()
 eventlet.spawn(bot_room_manager.run)
