@@ -6,6 +6,8 @@ import time
 import uuid
 import firebase_admin
 import pyrebase
+import eventlet
+eventlet.monkey_patch()
 from firebase_admin import credentials, auth
 from firebase_admin import firestore, storage
 from flask import Flask, jsonify, request
@@ -13,8 +15,6 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, join_room, leave_room, emit, close_room
 from default_rooms import get_mock_rooms
 from models import Room, User
-import eventlet
-eventlet.monkey_patch()
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/etc/secrets/debate-center-firebase-key.json"
 app = Flask(__name__)
@@ -46,7 +46,7 @@ auths = firebase_auth.auth()
 
 @app.route('/', methods=['GET'])
 def index():
-    return "hello this is me mario"
+    return "hello this is me maaario"
 
 @socketio.on('connect')
 def handle_connect():
@@ -223,7 +223,7 @@ def check_user_data():
         user_doc = user_ref.get().to_dict()
         return jsonify(user_doc)
     except Exception as e:
-        pass
+        return
 
 # ---------- UPDATE_USER ---------- #
 @app.route('/api/update_user', methods=['POST'])
@@ -937,7 +937,7 @@ class BotRoomManager:
                     self.remove_room(id)
                 else:
                     room.manage(current_time)
-            eventlet.sleep(30)
+            eventlet.sleep(10)
 
 bot_room_manager = BotRoomManager()
 eventlet.spawn(bot_room_manager.run)
