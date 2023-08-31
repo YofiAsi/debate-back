@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, List, Dict
 @dataclass
 class User:
@@ -25,3 +25,4 @@ class Room:
     pictureId: Optional[int]
     user_reports: Dict[str, List[str]]
     blacklist: List[str]
+    disconnected: List[str] = field(default_factory=list)
